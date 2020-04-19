@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.camera.lifecycle.ProcessCameraProvider
 import com.google.common.util.concurrent.ListenableFuture
 import com.rv1den.facetertest.presentation.screens.camera.presenter.CameraPresenterProvider
+import com.rv1den.facetertest.presentation.screens.camera.view.factories.bottomsheet.BottomSheetSettingsFactory
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.camerax.BackCameraFactory
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.camerax.ImageCaptureFactory
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.camerax.PreviewFactory
@@ -48,4 +49,8 @@ class CameraModule {
     fun provideProcessCameraProvider(application: Application): ListenableFuture<ProcessCameraProvider> {
         return ProcessCameraProvider.getInstance(application)
     }
+
+    @Provides
+    @ActivityScope
+    fun provideBottomSheetSettingsFactory() = BottomSheetSettingsFactory()
 }

@@ -15,6 +15,7 @@ import com.rv1den.facetertest.presentation.screens.camera.presenter.CameraPresen
 import com.rv1den.facetertest.presentation.screens.camera.presenter.CameraView
 import com.rv1den.facetertest.presentation.screens.camera.view.commands.BindCameraCommand
 import com.rv1den.facetertest.presentation.screens.camera.view.commands.TakePhotoCommand
+import com.rv1den.facetertest.presentation.screens.camera.view.factories.bottomsheet.BottomSheetSettingsFactory
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.camerax.BackCameraFactory
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.camerax.ImageCaptureFactory
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.camerax.PreviewFactory
@@ -44,6 +45,8 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
     lateinit var cameraExecutor: ExecutorService
     @Inject
     lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
+    @Inject
+    lateinit var bottomSheetSettingsFactory: BottomSheetSettingsFactory
 
     private val presenter by moxyPresenter {
         presenterProvider.get()
@@ -90,14 +93,8 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
     }
 
     override fun showSettings(resolution: Resolution) {
-        BottomSheetSettings().apply {
-            heightChangeListener = presenter::setImageHeight
-            widthChangeListener = presenter::setImageWidth
-            onApplyClickListener = presenter::applySettings
-            this.resolution = resolution
-            show(supportFragmentManager, "TAG")
-        }
-
+        val bottomSheet = bottomSheetSettingsFactory.create(presenter, resolution)
+        bottomSheet.show(supportFragmentManager, "TAG")
     }
 
     override fun initCamera(resolution: Resolution) {
