@@ -13,11 +13,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name="com.rv1den.facetertest.presentation.features.camera.view.CameraActivity"
+        <activity android:name="com.rv1den.facetertest.presentation.screens.camera.view.CameraActivity"
             android:screenOrientation="sensorPortrait"/>
 
 
-        <activity android:name="com.rv1den.facetertest.presentation.features.onboarding.view.OnboardingActivity">
+        <activity android:name="com.rv1den.facetertest.presentation.screens.onboarding.view.OnboardingActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
