@@ -7,4 +7,7 @@ import moxy.viewstate.strategy.alias.AddToEnd
 interface CameraView : MvpView {
     @AddToEnd
     fun initCamera(resolution: Resolution)
+
+    @AddToEnd
+    fun showSettings(resolution: Resolution)
 }

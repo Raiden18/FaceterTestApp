@@ -1,49 +1,45 @@
 package com.rv1den.facetertest.presentation.features.camera.view
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.hardware.camera2.CameraManager
 import android.hardware.display.DisplayManager
+import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Bundle
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.Preview
+import android.util.Log
+import android.view.OrientationEventListener
+import android.view.OrientationListener
+import android.widget.Toast
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import com.rv1den.facetertest.R
-import com.rv1den.facetertest.domain.models.enteties.Camera
 import com.rv1den.facetertest.domain.models.values.Resolution
 import com.rv1den.facetertest.presentation.app.FaceterTestApplication
 import com.rv1den.facetertest.presentation.features.camera.di.DaggerCameraComponent
 import com.rv1den.facetertest.presentation.features.camera.presenter.CameraPresenterProvider
 import com.rv1den.facetertest.presentation.features.camera.presenter.CameraView
-import com.rv1den.facetertest.presentation.features.camera.view.factories.ImageCaptureFactory
-import com.rv1den.facetertest.presentation.features.camera.view.factories.PreviewFactory
+import com.rv1den.facetertest.presentation.features.camera.view.commands.TakePhotoCommand
+import com.rv1den.facetertest.presentation.features.camera.view.factories.camerax.ImageCaptureFactory
+import com.rv1den.facetertest.presentation.features.camera.view.factories.camerax.PreviewFactory
+import com.rv1den.facetertest.presentation.features.camera.view.factories.file.ImageFileFactory
+import com.rv1den.facetertest.presentation.features.camera.view.factories.file.OutputDirectoryFactory
+import com.rv1den.facetertest.presentation.features.camera.view.settings.BottomSheetSettings
+import io.reactivex.rxjava3.core.Single
 import kotlinx.android.synthetic.main.activity_camera.*
 import moxy.MvpAppCompatActivity
 import moxy.ktx.moxyPresenter
 import java.io.File
+import java.lang.IllegalArgumentException
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import javax.inject.Inject
 
 class CameraActivity : MvpAppCompatActivity(), CameraView {
-    companion object {
-
-        /** Use external media if it is available, our app's file directory otherwise */
-        fun getOutputDirectory(context: Context): File {
-            val appContext = context.applicationContext
-            val mediaDir = context.externalMediaDirs.firstOrNull()?.let {
-                File(it, appContext.resources.getString(R.string.app_name)).apply { mkdirs() }
-            }
-            return if (mediaDir != null && mediaDir.exists())
-                mediaDir else appContext.filesDir
-        }
-    }
-
     @Inject
     lateinit var presenterProvider: CameraPresenterProvider
     @Inject
@@ -53,15 +49,12 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
     }
 
     private var container: ConstraintLayout? = null
-    private var viewFinder: PreviewView? = null
-    private lateinit var outputDirectory: File
 
     private var displayId: Int = -1
     private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
     private var preview: Preview? = null
     private var imageCapture: ImageCapture? = null
-    private var imageAnalyzer: ImageAnalysis? = null
-    private var camera: androidx.camera.core.Camera? = null
+    private var camera: Camera? = null
 
     private val displayManager by lazy {
         getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
@@ -70,37 +63,53 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
     private lateinit var cameraExecutor: ExecutorService
     private val imageCaptureFactory = ImageCaptureFactory()
     private val previewFactory = PreviewFactory()
+    private val imageFileFactory = ImageFileFactory(OutputDirectoryFactory())
 
-    private val displayListener = object : DisplayManager.DisplayListener {
-        override fun onDisplayAdded(displayId: Int) = Unit
-        override fun onDisplayRemoved(displayId: Int) = Unit
-        override fun onDisplayChanged(displayId: Int) = container?.let { view ->
-            if (displayId == this@CameraActivity.displayId) {
-                imageCapture?.targetRotation = view.display.rotation
-                imageAnalyzer?.targetRotation = view.display.rotation
-            }
-        } ?: Unit
-    }
+    private var orientationEventListener: OrientationEventListener? = null
+
 
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
-        displayManager.unregisterDisplayListener(displayListener)
     }
+
+    override fun onStop() {
+        orientationEventListener?.disable()
+        super.onStop()
+    }
+
+    override fun onStart() {
+        orientationEventListener?.enable()
+        super.onStart()
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         initDagger()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
         container = camera_container as ConstraintLayout
-        viewFinder = view_finder
         cameraExecutor = Executors.newSingleThreadExecutor()
-        displayManager.registerDisplayListener(displayListener, null)
-        outputDirectory = getOutputDirectory(this)
+        settings_button.setOnClickListener {
+            presenter.onSettingsClick()
+        }
+        camera_capture_button.setOnClickListener {
+            takePhoto()
+        }
     }
 
+    private fun takePhoto() {
+        TakePhotoCommand(
+            this,
+            imageFileFactory,
+            imageCapture!!,
+            cameraExecutor
+        ).execute()
+    }
+
+
     private fun bindCameraUseCases(resolution: Resolution) {
-        val rotation = viewFinder!!.display.rotation
+        val rotation = view_finder.display.rotation
         val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         val mainExecutor = ContextCompat.getMainExecutor(this@CameraActivity)
@@ -108,22 +117,36 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
             preview = previewFactory.create(resolution, rotation)
             imageCapture = imageCaptureFactory.create(resolution, rotation)
+            orientationEventListener = OrientationEventListenerImpl(this, imageCapture!!)
+            orientationEventListener?.enable()
             // Must unbind the use-cases before rebinding them
             cameraProvider.unbindAll()
+            try {
+                this.camera = cameraProvider.bindToLifecycle(
+                    this, cameraSelector, preview, imageCapture
+                )
+                val cameraInfo = this.camera?.cameraInfo
+                val surfaceProvider = view_finder.createSurfaceProvider(cameraInfo)
+                preview?.setSurfaceProvider(surfaceProvider)
+            } catch (exception: IllegalArgumentException) {
+                exception.printStackTrace()
+            }
 
-            this.camera = cameraProvider.bindToLifecycle(
-                this, cameraSelector, preview, imageCapture
-            )
-            val cameraInfo = this.camera?.cameraInfo
-            val surfaceProvider = viewFinder!!.createSurfaceProvider(cameraInfo)
-            preview?.setSurfaceProvider(surfaceProvider)
         }, mainExecutor)
     }
 
+    override fun showSettings(resolution: Resolution) {
+        val bottomSheetSettings = BottomSheetSettings()
+        bottomSheetSettings.heightChangeListener = presenter::setImageHeight
+        bottomSheetSettings.widthChangeListener = presenter::setImageWidth
+        bottomSheetSettings.onApplyClickListener = presenter::applySettings
+        bottomSheetSettings.resolution = resolution
+        bottomSheetSettings.show(supportFragmentManager, "TAG")
+    }
 
     override fun initCamera(resolution: Resolution) {
-        viewFinder?.post {
-            displayId = viewFinder!!.display.displayId
+        view_finder.post {
+            displayId = view_finder.display.displayId
             bindCameraUseCases(resolution)
         }
     }

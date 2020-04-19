@@ -5,5 +5,7 @@
     <string name="setting_button">Настройки</string>
     <string name="width_hint">Ширина</string>
     <string name="height_hint">Высота</string>
-
+    <string name="min_pix_message">Минимальная ширина и высота - 160px</string>
+    <string name="ok">Хорошо</string>
+    <string name="success_message">Фото сохранено в галерею</string>
 </resources>

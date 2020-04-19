@@ -1,4 +1,4 @@
-package com.rv1den.facetertest.presentation.features.camera.view.factories
+package com.rv1den.facetertest.presentation.features.camera.view.factories.camerax
 
 import androidx.camera.core.UseCase
 import androidx.camera.core.impl.ImageOutputConfig
