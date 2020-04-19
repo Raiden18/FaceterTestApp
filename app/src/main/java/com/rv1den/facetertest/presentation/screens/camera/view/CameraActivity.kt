@@ -1,5 +1,6 @@
 package com.rv1den.facetertest.presentation.screens.camera.view
 
+import android.app.AlertDialog
 import android.hardware.camera2.CameraManager
 import android.os.Bundle
 import android.view.OrientationEventListener
@@ -13,14 +14,12 @@ import com.rv1den.facetertest.presentation.app.FaceterTestApplication
 import com.rv1den.facetertest.presentation.screens.camera.di.DaggerCameraComponent
 import com.rv1den.facetertest.presentation.screens.camera.presenter.CameraPresenterProvider
 import com.rv1den.facetertest.presentation.screens.camera.presenter.CameraView
-import com.rv1den.facetertest.presentation.screens.camera.view.commands.BindCameraCommand
 import com.rv1den.facetertest.presentation.screens.camera.view.commands.TakePhotoCommand
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.bottomsheet.BottomSheetSettingsFactory
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.camerax.BackCameraFactory
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.camerax.ImageCaptureFactory
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.camerax.PreviewFactory
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.file.ImageFileFactory
-import com.rv1den.facetertest.presentation.screens.camera.view.settings.BottomSheetSettings
 import kotlinx.android.synthetic.main.activity_camera.*
 import moxy.MvpAppCompatActivity
 import moxy.ktx.moxyPresenter
@@ -47,13 +46,12 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
     lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
     @Inject
     lateinit var bottomSheetSettingsFactory: BottomSheetSettingsFactory
-
     private val presenter by moxyPresenter {
         presenterProvider.get()
     }
 
-    var imageCapture: ImageCapture? = null
-    var orientationEventListener: OrientationEventListener? = null
+    private var imageCapture: ImageCapture? = null
+    private var orientationEventListener: OrientationEventListener? = null
 
 
     override fun onDestroy() {
@@ -99,8 +97,36 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
 
     override fun initCamera(resolution: Resolution) {
         view_finder.post {
-            BindCameraCommand(this, resolution).execute()
+            bindCamera(resolution)
         }
+    }
+
+    private fun bindCamera(resolution: Resolution) {
+        val rotation = view_finder.display.rotation
+        val cameraSelector = backCameraFactory.create()
+        val mainExecutor = ContextCompat.getMainExecutor(this)
+        cameraProviderFuture.addListener(Runnable {
+            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            val preview = previewFactory.create(resolution, rotation)
+            imageCapture = imageCaptureFactory.create(resolution, rotation)
+            orientationEventListener = OrientationEventListenerImpl(this, imageCapture!!)
+            orientationEventListener?.enable()
+            // Необходимо разбайндить юз-кейсы CameraX пережде чем снова зайндить их
+            cameraProvider.unbindAll()
+            try {
+                val camera = cameraProvider.bindToLifecycle(
+                    this,
+                    cameraSelector,
+                    preview,
+                    imageCapture
+                )
+                val cameraInfo = camera.cameraInfo
+                val surfaceProvider = view_finder.createSurfaceProvider(cameraInfo)
+                preview.setSurfaceProvider(surfaceProvider)
+            } catch (exception: IllegalArgumentException) {
+                showErrorDialog()
+            }
+        }, mainExecutor)
     }
 
     private fun initDagger() {
@@ -109,5 +135,12 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
             .projectComponent(projectComponent)
             .build()
             .inject(this)
+    }
+
+    private fun showErrorDialog() {
+        AlertDialog.Builder(this)
+            .setMessage(R.string.min_pix_message)
+            .setPositiveButton(R.string.ok) { dialog, _ -> dialog.dismiss() }
+            .show()
     }
 }

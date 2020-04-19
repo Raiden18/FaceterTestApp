@@ -11,7 +11,6 @@ class PermissionRequesterImpl(
     private val application: Application
 ) : PermissionRequester {
 
-    //TODO: add request permissions
     override fun requestPermission(resultListener: (HashMap<String, Boolean>) -> Unit) {
         val permissions = listOf(
             Manifest.permission.CAMERA

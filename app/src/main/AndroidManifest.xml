@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.rv1den.facetertest">
     <uses-permission android:name="android.permission.CAMERA" />
-    <!--TODO: ADD WRITE EXTERNAL STORAGE TO SAVE PHOTO-->
 
 
     <application

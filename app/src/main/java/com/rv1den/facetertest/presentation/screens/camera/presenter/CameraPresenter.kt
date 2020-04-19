@@ -6,7 +6,6 @@ import moxy.MvpPresenter
 class CameraPresenter : MvpPresenter<CameraView>() {
     private var resolution = Resolution.fullHd()
 
-
     override fun attachView(view: CameraView?) {
         super.attachView(view)
         viewState.initCamera(resolution)
