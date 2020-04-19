@@ -11,6 +11,9 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
 import android.view.Surface
+import android.view.TextureView
+import android.view.View
+import androidx.camera.core.CameraX
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
 import androidx.camera.core.ImageCaptureException
@@ -34,7 +37,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import javax.inject.Inject
-
+@SuppressLint("RestrictedApi")
 class CameraActivity : MvpAppCompatActivity(), CameraView {
     private val IMAGE_BUFFER_SIZE: Int = 3
     private val IMAGE_CAPTURE_TIMEOUT_MILLIS: Long = 5000
@@ -105,92 +108,15 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
         return Single.just(captureRequest)
     }
 
-    private fun takePhoto() {
-        Single.just(imageReader)
-            .doOnSuccess { clearImageReaderCache(it) }
-            .doOnSuccess { startNewImageQueue(it) }
-            .flatMap { createCapture(it) }
+    override fun initCamera(camera: Camera) {
+        CameraX.unbindAll()
 
-
-
-
-
-        session.capture(captureRequest, object : CameraCaptureSession.CaptureCallback() {
-            override fun onCaptureCompleted(
-                session: CameraCaptureSession,
-                request: CaptureRequest,
-                result: TotalCaptureResult
-            ) {
-                super.onCaptureCompleted(session, request, result)
-
-                val resultTimestamp = result.get(CaptureResult.SENSOR_TIMESTAMP)
-
-                // Set a timeout in case image captured is dropped from the pipeline
-                val exc = TimeoutException("Image dequeuing took too long")
-                val timeoutRunnable = Runnable { throw exc }
-                imageReaderHandler.postDelayed(timeoutRunnable, IMAGE_CAPTURE_TIMEOUT_MILLIS)
-
-                // Loop in the coroutine's context until an image with matching timestamp comes
-                // We need to launch the coroutine context again because the callback is done in
-                //  the handler provided to the `capture` method, not in our coroutine context
-
-                // Dequeue images while timestamps don't match
-                val image = imageQueue.take()
-                // TODO(owahltinez): b/142011420
-                // if (image.timestamp != resultTimestamp) continue
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-                    image.format != ImageFormat.DEPTH_JPEG &&
-                    image.timestamp != resultTimestamp
-                ) continue
-                Log.d(TAG, "Matching image dequeued: ${image.timestamp}")
-
-                // Unset the image reader listener
-                imageReaderHandler.removeCallbacks(timeoutRunnable)
-                imageReader.setOnImageAvailableListener(null, null)
-
-                // Clear the queue of images, if there are left
-                while (imageQueue.size > 0) {
-                    imageQueue.take().close()
-                }
-
-                // Compute EXIF orientation metadata
-                val rotation = relativeOrientation.value ?: 0
-                val mirrored = characteristics.get(CameraCharacteristics.LENS_FACING) ==
-                        CameraCharacteristics.LENS_FACING_FRONT
-                val exifOrientation = computeExifOrientation(rotation, mirrored)
-
-                // Build the result and resume progress
-                combinedCaptureResult = CombinedCaptureResult(
-                    image, result, exifOrientation, imageReader.imageFormat
-                )
-                // There is no need to break out of the loop, this coroutine will suspend
-
-            }
-        }, cameraHandler)
+        val preview = createPreviewUseCase()
+        preview.setOnCapturedPointerListener { view, event ->  }
     }
 
-    override fun initCamera(camera: Camera) {
-        viewFinder = AutoFitSurfaceView(this)
-        photo_width.setText(camera.resolution.width.toString())
-        photo_height.setText(camera.resolution.height.toString())
-        val lastView = root_view.children.last()
-        if (lastView is AutoFitSurfaceView) {
-            root_view.removeView(lastView)
-        }
-        root_view.addView(viewFinder)
-        characteristics = cameraManager.getCameraCharacteristics(camera.id)
-        Single.just(viewFinder!!)
-            .flatMap { UiRxFactories.addSurfaceHolderCallback(it, characteristics, camera) }
-            .flatMap { UiRxFactories.openCamera(cameraManager, camera, cameraHandler) }
-            .doOnSuccess { this@CameraActivity.camera = it }
-            .flatMap { UiRxFactories.createImageReader(characteristics, camera) }
-            .doOnSuccess { this@CameraActivity.imageReader = it }
-            .flatMap { UiRxFactories.createSurfacesForOutputFrames(it, viewFinder!!) }
-            .flatMap { UiRxFactories.createCaptureSession(this@CameraActivity.camera, it) }
-            .doOnSuccess { this@CameraActivity.session = it }
-            .doOnSuccess { configureSession() }
-            .subscribe({}, {})
-        relativeOrientation = OrientationLiveData(this, characteristics)
+    private fun createPreviewUseCase(): TextureView {
+
     }
 
     private fun configureSession() {

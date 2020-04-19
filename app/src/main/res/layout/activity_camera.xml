@@ -7,43 +7,5 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/photo_width_layout"
-        style="@style/TextInputLayout"
-        android:layout_marginStart="8dp"
-        android:layout_marginBottom="8dp"
-        android:hint="Width"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/photo_width"
-            style="@style/TextInputEditText" />
-
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/photo_height_layout"
-        style="@style/TextInputLayout"
-        android:layout_marginStart="8dp"
-        android:layout_marginBottom="8dp"
-        android:hint="Height"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/photo_width_layout">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/photo_height"
-            style="@style/TextInputEditText" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <Button
-        android:id="@+id/take_photo_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:elevation="3dp"
-        android:text="Take photo"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/photo_height_layout" />
-
+    <previewV
 </androidx.constraintlayout.widget.ConstraintLayout>
