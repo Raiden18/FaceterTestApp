@@ -6,17 +6,17 @@
 
 
     <application
-        android:name=".app.FaceterTestApplication"
+        android:name="com.rv1den.facetertest.presentation.app.FaceterTestApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name="com.rv1den.facetertest.features.camera.view.CameraActivity" />
+        <activity android:name="com.rv1den.facetertest.presentation.features.camera.view.CameraActivity" />
 
 
-        <activity android:name=".features.onboarding.view.OnboardingActivity">
+        <activity android:name="com.rv1den.facetertest.presentation.features.onboarding.view.OnboardingActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
