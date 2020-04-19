@@ -3,4 +3,7 @@
     <string name="onboarding_open_camera_button">Открыть камеру</string>
     <string name="permissions_descriptions">Доступ к камере необходим для того чтобы сделать фото, а доступ к внутреннему хранилищу для сохранения</string>
     <string name="setting_button">Настройки</string>
+    <string name="width_hint">Ширина</string>
+    <string name="height_hint">Высота</string>
+
 </resources>

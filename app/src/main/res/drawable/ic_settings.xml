@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_settings_background"/>
+    <item android:drawable="@drawable/ic_settings_black_24p"
+        android:bottom="4dp"
+        android:top="4dp"
+        android:start="4dp"
+        android:end="4dp"/>
+</layer-list>
