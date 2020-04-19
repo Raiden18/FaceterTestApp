@@ -5,6 +5,6 @@ data class Resolution(
     val height: Int
 ) {
     companion object {
-        fun fullHd() = Resolution(200, 200)
+        fun fullHd() = Resolution(1920, 1080)
     }
 }

@@ -15,6 +15,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import com.rv1den.facetertest.R
 import com.rv1den.facetertest.domain.models.enteties.Camera
+import com.rv1den.facetertest.domain.models.values.Resolution
 import com.rv1den.facetertest.presentation.app.FaceterTestApplication
 import com.rv1den.facetertest.presentation.features.camera.di.DaggerCameraComponent
 import com.rv1den.facetertest.presentation.features.camera.presenter.CameraPresenterProvider
@@ -87,7 +88,6 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
         displayManager.unregisterDisplayListener(displayListener)
     }
 
-    @SuppressLint("CheckResult") // There are no possible memory leaks for RxBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         initDagger()
         super.onCreate(savedInstanceState)
@@ -99,15 +99,15 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
         outputDirectory = getOutputDirectory(this)
     }
 
-    private fun bindCameraUseCases(camera: Camera) {
+    private fun bindCameraUseCases(resolution: Resolution) {
         val rotation = viewFinder!!.display.rotation
         val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         val mainExecutor = ContextCompat.getMainExecutor(this@CameraActivity)
         cameraProviderFuture.addListener(Runnable {
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-            preview = previewFactory.create(camera, rotation)
-            imageCapture = imageCaptureFactory.create(camera, rotation)
+            preview = previewFactory.create(resolution, rotation)
+            imageCapture = imageCaptureFactory.create(resolution, rotation)
             // Must unbind the use-cases before rebinding them
             cameraProvider.unbindAll()
 
@@ -121,10 +121,10 @@ class CameraActivity : MvpAppCompatActivity(), CameraView {
     }
 
 
-    override fun initCamera(camera: Camera) {
+    override fun initCamera(resolution: Resolution) {
         viewFinder?.post {
             displayId = viewFinder!!.display.displayId
-            bindCameraUseCases(camera)
+            bindCameraUseCases(resolution)
         }
     }
 

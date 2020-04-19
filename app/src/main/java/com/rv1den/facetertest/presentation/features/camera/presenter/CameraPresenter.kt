@@ -12,41 +12,26 @@ class CameraPresenter(
     private val getCameraUseCase: GetCameraUseCase
 ) : MvpPresenter<CameraView>() {
 
-    private lateinit var backCamera: Camera
-
-    override fun onFirstViewAttach() {
-        super.onFirstViewAttach()
-        val cameras = getCameraUseCase.execute()
-        backCamera = cameras.first()
-    }
+    private var defaultResolution = Resolution.fullHd()
 
     override fun attachView(view: CameraView?) {
         super.attachView(view)
-        viewState.initCamera(backCamera)
+        viewState.initCamera(defaultResolution)
     }
 
     fun setImageWidth(width: String) {
-        Observable.just(width)
-            .filter { it.isNotEmpty() }
-            .map { it.toInt() }
-            .map { backCamera.resolution.copy(width = it) }
-            .subscribe(::updateCameraResolution, ::showError)
+
     }
 
     fun setImageHeight(height: String) {
-        Single.just(height)
-            .filter { it.isNotEmpty() }
-            .map { it.toInt() }
-            .map { backCamera.resolution.copy(height = it) }
-            .subscribe(::updateCameraResolution, ::showError)
+
     }
 
     private fun updateCameraResolution(resolution: Resolution) {
-        backCamera = backCamera.copy(resolution = resolution)
-        viewState.initCamera(backCamera)
+
     }
 
     private fun showError(throwable: Throwable) {
-        Log.i("ERROR", throwable.message)
+
     }
 }
