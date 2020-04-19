@@ -7,7 +7,6 @@ import android.net.Uri
 import android.util.Log
 import androidx.camera.core.ImageCapture
 import com.rv1den.facetertest.R
-import com.rv1den.facetertest.presentation.screens.camera.view.ImageCaptureOnImageSavedCallback
 import com.rv1den.facetertest.presentation.screens.camera.view.factories.file.FileFactory
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
@@ -20,7 +19,11 @@ class TakePhotoCommand(
     private var imageCapture: ImageCapture,
     private val cameraExecutor: ExecutorService
 ) : Command {
+    private companion object{
+        const val IMAGES_PATH_FOLDER = "images/*"
+    }
 
+    //Обернул коллбек CameraX в Rx-цепочку для более удобного чтения
     override fun execute() {
         val photoFile = imageFileFactory.create(activity)
         Single.just(photoFile)
@@ -29,16 +32,12 @@ class TakePhotoCommand(
             .map { createUriFile(it, photoFile) }
             .doOnSuccess { savePhotoToGallery(it.path.toString()) }
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ showSuccessMessage() }, ::showError)
+            .subscribe({ showSuccessMessage() }, ::logError)
 
     }
 
     private fun createOutputFileOptions(photoFile: File): ImageCapture.OutputFileOptions {
         return ImageCapture.OutputFileOptions.Builder(photoFile).build()
-    }
-
-    private fun createUriFile(fileResult: ImageCapture.OutputFileResults, photoFile: File): Uri {
-        return fileResult.savedUri ?: Uri.fromFile(photoFile)
     }
 
     private fun takePicture(outputOptions: ImageCapture.OutputFileOptions): Single<ImageCapture.OutputFileResults> {
@@ -51,11 +50,15 @@ class TakePhotoCommand(
         }
     }
 
+    private fun createUriFile(fileResult: ImageCapture.OutputFileResults, photoFile: File): Uri {
+        return fileResult.savedUri ?: Uri.fromFile(photoFile)
+    }
+
     private fun savePhotoToGallery(photoPath: String) {
         MediaScannerConnection.scanFile(
             activity,
             arrayOf(photoPath),
-            arrayOf("images/*")
+            arrayOf(IMAGES_PATH_FOLDER)
         ) { _, _ -> Log.i("SAVED", photoPath) }
     }
 
@@ -67,7 +70,7 @@ class TakePhotoCommand(
     }
 
 
-    private fun showError(throwable: Throwable) {
+    private fun logError(throwable: Throwable) {
         Log.i("Error", throwable.message.toString())
     }
 }

@@ -16,18 +16,20 @@ class OrientationEventListenerImpl(
         const val ROTATION_270 = 4
     }
 
-    private var rotation = 0
+    private var currentRotation = 0
 
     override fun onOrientationChanged(orientation: Int) {
-        if ((orientation < 35 || orientation > 325) && rotation != ROTATION_O) { // PORTRAIT
-            rotation = Surface.ROTATION_0
-        } else if (orientation in 146..214 && rotation != ROTATION_180) { // REVERSE PORTRAIT
-            rotation = Surface.ROTATION_180;
-        } else if (orientation in 56..124 && rotation != ROTATION_270) { // REVERSE LANDSCAPE
-            rotation = Surface.ROTATION_270;
-        } else if (orientation in 236..304 && rotation != ROTATION_90) { //LANDSCAPE
-            rotation = Surface.ROTATION_90;
+        currentRotation = calculateCurrentAngleRotation(orientation)
+        imageCapture.targetRotation = currentRotation
+    }
+
+    private fun calculateCurrentAngleRotation(orientation: Int): Int {
+        return when {
+            (orientation < 35 || orientation > 325) && currentRotation != ROTATION_O -> Surface.ROTATION_0
+            orientation in 146..214 && currentRotation != ROTATION_180 -> Surface.ROTATION_180
+            orientation in 56..124 && currentRotation != ROTATION_270 -> Surface.ROTATION_270
+            orientation in 236..304 && currentRotation != ROTATION_90 -> Surface.ROTATION_90
+            else -> Surface.ROTATION_0
         }
-        imageCapture.targetRotation = rotation
     }
 }
